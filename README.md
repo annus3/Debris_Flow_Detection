@@ -154,7 +154,7 @@ Statistical testing & alert generation:
 ## 🔗 Data & Output Paths
 
 * **Catalogue**:
-  `assets/catalogue_<DATE>.csv`
+  `not_included`
 
 * **Features**:
   `assets/debris_flow_feature_vectors/<DATE>/`
