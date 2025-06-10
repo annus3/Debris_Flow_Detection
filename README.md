@@ -166,11 +166,11 @@ Runs the full debris-flow EWS pipeline in seven steps:
 ```bash
 data/df_data/<DATE>-DF/IGB02/<DATE>-BHZ    # Input seismic SAC waveform
 assets/
-├── catalogue_<DATE>.csv                   # Segmentation catalogue
-├── debris_flow_feature_vectors/<DATE>/   # TSFRESH real and surrogate features
-├── mann_whitney_testing/                 # MW-U matrices (real and surrogates)
-├── debris_flow_segments/<DATE>/          # .npy files for noise/precursor/DF
-├── segmentation/<DATE>/                  # PNG figures for EWS and alerts
+├── catalogue_<DATE>.csv (not included)    # Segmentation catalogue
+├── debris_flow_feature_vectors/<DATE>/    # TSFRESH real and surrogate features
+├── mann_whitney_testing/                  # MW-U matrices (real and surrogates)
+├── debris_flow_segments/<DATE>/           # .npy files for noise/precursor/DF
+├── segmentation/<DATE>/                   # PNG figures for EWS and alerts
 ```
 
 ---
