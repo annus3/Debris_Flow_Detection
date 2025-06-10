@@ -1,194 +1,206 @@
-# Debris‐Flow Early‐Warning Analysis
+# Debris‐Flow Early‐Warning Analysis (DF-EWS)
 
-This subfolder contains a custom implementation of the debris‐flow EWS pipeline.  
-_In the same repository you will also find:_
-- **`alt_implementation/`** — a parallel version of these scripts, organized differently (see `alt_implementation/README.md`).  
-- **Official TSFRESH modules**:  
-  - `TSFRESH_feature_calculators.py`  
-  - `TSFRESH_settings.py`  
+A Python framework for detecting **debris-flow early warning signals** using seismic data, TSFRESH-based time-series features, and Mann–Whitney statistical analysis.
+
+This project enables scientific exploration and practical detection of early warning signals preceding debris-flow events by applying a robust signal processing and machine learning pipeline.
 
 ---
 
-## ⚙️ Installation
+## 🔍 Project Description
+
+**Debris‐Flow Early‐Warning Analysis (DF-EWS)** is a modular framework to process seismic data for debris-flow events and detect early warning signals (EWS) based on statistical and machine learning techniques. The pipeline supports:
+
+- SAC waveform preprocessing and time alignment
+- Precursor segmentation using RMS-based windowing
+- Feature extraction via TSFRESH (with surrogate null modeling)
+- Mann–Whitney U statistical testing
+- Alert signal detection and correction
+- Visualization of warning timelines and time-series segments
+
+Developed in collaboration with geophysical monitoring researchers, this pipeline is designed for reproducibility, parallel processing, and clear visualization of early warnings.
+
+---
+
+## 📦 Installation
 
 ```bash
 cd path/to/this/folder
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-````
+```
 
 ---
 
-## 📖 Usage
+## 🚀 Usage
 
-Ensure your SAC data lives under:
+Ensure your seismic data is placed under:
 
 ```
 data/df_data/<DATE>-DF/IGB02/<DATE>-BHZ
 ```
 
-Run the pipeline for event index `M`:
+To run the pipeline for a given event:
+
+1. Edit the selected index in `main.py`:
+   ```python
+   M = 1  # select event index (0-based)
+   ```
+
+2. Run the main script:
+   ```bash
+   python main.py
+   ```
+
+---
+
+## 📁 Scripts: File Descriptions
+
+### `main.py` – Driver Pipeline
+
+Runs the full debris-flow EWS pipeline in seven steps:
+
+1. **Preprocessing**  
+   - Reads SAC file → detrends, filters (1–45 Hz)  
+   - Builds uniform time axis  
+   - Adjusts for midnight-crossing events  
+
+2. **Segmentation**  
+   - Uses `PRE_DF_split()` to extract pre-event segments  
+   - Saves catalogue CSV with window metadata  
+
+3. **Feature Extraction**  
+   - Calls `EWS_analysis()` with TSFRESH EfficientFCParameters  
+   - Generates `Nsurr` surrogate time series by shuffling  
+
+4. **Mann–Whitney Testing**  
+   - `MW_analysis()` computes MW-U statistics  
+   - Saves matrices for real and surrogate features  
+
+5. **Alerts & Statistics**  
+   - Computes p-values with multiple-testing correction  
+   - Builds family-wise alert counts and co-occurrence matrix  
+   - Determines early warning timestamp and top features  
+
+6. **Final Segmentation**  
+   - Splits time series into noise / precursor / DF  
+   - Saves each as `.npy` arrays  
+
+7. **Plotting**  
+   - Creates EWS probability plot and per-feature warning timeline  
+
+---
+
+### `s0_subroutines.py` – Utilities
+
+- `rle(sequence, series=None)`  
+  Run-Length Encoding of 1D sequences (used to detect sustained alert regions)
+
+---
+
+### `s1_PRE_DF.py` – Precursor Segmentation
+
+- `PRE_DF_split()`  
+  - Computes RMS over sliding window  
+  - Applies binary segmentation to detect DF onset  
+  - Outputs a TSFRESH-formatted DataFrame
+
+- Helper functions:  
+  - `getfam()`, `getfeat()` for parsing TSFRESH feature names  
+  - `get_pvals()` to apply empirical and corrected p-value tests  
+  - `generate_sequences()`, `simulate_coincidence()` for null hypothesis modeling  
+  - `consec_warnings()`, `feature_importance()`, `feature_warnings()`, `best_of_category()`  
+
+---
+
+### `s2_EWS.py` – Feature Extraction and EWS Analysis
+
+- `featurize()`  
+  Extracts TSFRESH features per window using a given feature set configuration.
+
+- `EWS_analysis()`  
+  - Computes features for real and surrogate datasets  
+  - Runs in parallel for performance  
+
+- `MW_analysis()`  
+  - Applies Mann–Whitney U testing across time shifts  
+  - Outputs: time axis, MW scores for real and surrogate features  
+
+- `EWS_split()`  
+  - Detects earliest point where real features diverge from surrogate distribution  
+
+---
+
+### `s3_alerts.py` – Alerts, Warnings & Evaluation
+
+- `get_pvals()`  
+  Applies empirical p-value computation and multiple-testing correction (e.g. FDR)
+
+- `count_signif_families()`  
+  Computes family-level alert frequency and co-occurrence
+
+- `consec_warnings()`  
+  Encodes sequences of binary alert signals
+
+- `feature_warnings()`  
+  - Detects when features trigger sustained alerts  
+  - Counts false positives before real alerts
+
+- `feature_importance()`  
+  Uses Random Forest (or permutation importance) to assess signal discriminability
+
+- `best_of_category()`  
+  Selects best-performing feature per family (e.g. by importance or early warning time)
+
+---
+
+### `TSFRESH_feature_calculators.py` & `TSFRESH_settings.py`
+
+- Directly imported from the [TSFRESH](https://github.com/blue-yonder/tsfresh) repository (MIT license)
+- Used to customize and control which time-series features to compute
+
+---
+
+## 📂 Data and Output Structure
 
 ```bash
-python main.py
+data/df_data/<DATE>-DF/IGB02/<DATE>-BHZ    # Input seismic SAC waveform
+assets/
+├── catalogue_<DATE>.csv                   # Segmentation catalogue
+├── debris_flow_feature_vectors/<DATE>/   # TSFRESH real and surrogate features
+├── mann_whitney_testing/                 # MW-U matrices (real and surrogates)
+├── debris_flow_segments/<DATE>/          # .npy files for noise/precursor/DF
+├── segmentation/<DATE>/                  # PNG figures for EWS and alerts
 ```
 
-Edit `main.py`:
-
-```python
-M = 1  # select event by index
-```
-
 ---
 
-## 🗂️ Script Folder: File Descriptions
+## 🧪 Dependencies
 
-### 1. `main.py`
-
-**Driver script** orchestrating the entire workflow.
-**Steps:**
-
-1. **Preprocessing (STEP 0)**
-
-   * Reads SAC waveform → detrend & filter → builds time axis
-   * **Input:** `data/df_data/<DATE>-DF/IGB02/<DATE>-BHZ`
-2. **Segmentation (STEP 1)**
-
-   * `s1_PRE_DF.PRE_DF_split()` → saves catalogue CSV
-   * **Output:** `assets/catalogue_<DATE>.csv`
-3. **Featurization (STEP 2.1)**
-
-   * `s2_EWS.EWS_analysis()` → saves feature vectors & surrogates
-   * **Output:** `assets/debris_flow_feature_vectors/<DATE>/featvec_*.csv`
-4. **MW Testing (STEP 2.2)**
-
-   * `s2_EWS.MW_analysis()` → saves `.npy` matrices
-   * **Output:** `assets/mann_whitney_testing/mwmat_<DATE>*.npy`
-5. **Alerts & Stats (STEP 3.1)**
-
-   * `s3_alerts.get_pvals()`, `count_signif_families()`, etc. → compute EWS time
-6. **Segmentation Save (STEP 3.2)**
-
-   * Partition time‐series into noise/precursor/DF segments → saves `.npy`
-   * **Output:** `assets/debris_flow_segments/<DATE>/*.npy`
-7. **Plotting (STEP 3.3)**
-
-   * Generates EWS & warning‐times figures
-   * **Output:** `assets/segmentation/<DATE>/*.png`
-
----
-
-### 2. `s0_subroutines.py`
-
-Utility functions used across modules.
-
-* `rle(sequence, series=None)`:
-  Run‐length encoding on a sequence. Returns either all `(value, length)` pairs or, if `series` specified, only lengths for runs equal to that value.
-
----
-
-### 3. `s1_PRE_DF.py`
-
-Pre‐DF segmentation via RMS & change‐point detection:
-
-* `PRE_DF_split(signal, w, step, t0, tfin, min_size, buffer, noise_win, verbose=False)`
-
-  * Slides window of width `w` every `step` seconds
-  * Computes RMS → binary segmentation (`ruptures.Binseg`) → detects start/end of DF
-  * Returns `(shift_time, end_time, d_train)`
-  * `d_train`: TSFRESH‐formatted DataFrame for all pre‐DF windows
-
----
-
-### 4. `s2_EWS.py`
-
-Feature extraction & Mann‐Whitney analysis:
-
-* `featurize(df, feat_settings)`: extract tsfresh features for one window
-* `EWS_analysis(d_preDF, Nsurr, feat_settings)`:
-
-  * Generate `Nsurr` surrogates by shuffling
-  * Parallel featurization for real & surrogate windows
-* `MW_analysis(real_feats, surr_feats, Wmw, Nrndm)`:
-
-  * Compute Mann–Whitney U over sliding-window vs. random noise segments
-  * Returns `(a_tright, a_mw, a_mw_rndm)`
-
----
-
-### 5. `s3_alerts.py`
-
-Statistical testing & alert generation:
-
-* **Extraction helpers**:
-
-  * `getfam(name)`, `getfeat(name)`: parse tsfresh feature names
-* **P-value routines**:
-
-  * `get_pvals(mw, mw_surr, MT_METHOD, alpha)`: empirical + corrected p-values
-  * `count_signif_families(feature_alerts, featnames, famlist, mw_surr)`: co-occurrence matrix + fractional family counts
-* **Simulation**:
-
-  * `generate_sequences(N, T, p)`, `simulate_coincidence(sequences, coincidence_matrix)`
-* **Warning detection**:
-
-  * `consec_warnings(binary_seq)`: run‐length encoding of alert flags
-  * `feature_warnings(feature_alerts, Nfeat, alert_thresh, wtime)`: earliest warn time & false-positive count per feature
-* **Evaluation**:
-
-  * `feature_importance(...)`: RandomForest (or permutation) importances
-  * `best_of_category(feature_table, metric)`: select top feature per family by metric
-  
-6. **Official TSFRESH modules**
-
-   * **`TSFRESH_feature_calculators.py`**
-
-     > From tsfresh (MIT license). Defines all low-level time‐series feature calculators (simple & combiner).
-   * **`TSFRESH_settings.py`**
-
-     > From tsfresh (MIT license). Controls which features are enabled during extraction.
-
----
-
-## 🔗 Data & Output Paths
-
-* **Catalogue**:
-  `not_included`
-
-* **Features**:
-  `assets/debris_flow_feature_vectors/<DATE>/`
-
-* **MW Matrices**:
-  `assets/mann_whitney_testing/mwmat_<DATE>*.npy`
-
-* **Segments**:
-  `assets/debris_flow_segments/<DATE>/*.npy`
-
-* **Plots**:
-  `assets/segmentation/<DATE>/*.png`
-
----
-
-## 📦 Dependencies
+Install all required packages via:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Key packages:
+### Key Libraries:
 
-* `numpy`, `pandas`, `obspy`
-* `scipy`, `tqdm`, `ruptures`
-* `tsfresh`, `statsmodels`, `scikit-learn`
-* `matplotlib`, `cmcrameri`, `joblib`
+- `numpy`, `pandas`, `scipy`
+- `obspy`, `ruptures`, `tsfresh`
+- `scikit-learn`, `statsmodels`, `joblib`
+- `tqdm`, `matplotlib`, `cmcrameri`
 
 ---
 
-## 📜 License
+## 📄 License
 
-All custom code: **MIT License**.
-TSFRESH modules: **MIT License** (see their header comments).
+- All custom code: **MIT License**
+- TSFRESH modules used: **MIT License** (see original project)
 
-```
-```
+---
+
+## 📫 Citation / Contact
+
+If you use this pipeline in your research, please cite the repository or contact the author.
+
+> Developed as part of a seismic early warning study for debris-flow events.
